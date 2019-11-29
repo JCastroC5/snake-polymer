@@ -1,0 +1,288 @@
+<link rel="import" href="../bower_components/polymer/polymer-element.html">
+
+<dom-module id="game-level">
+  <template>
+    <style include="shared-styles">
+      :host {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        padding-top: 10px;
+      }
+
+      canvas {
+        background: url('../images/snake/background.png');
+      }
+    </style>
+
+    <h3>Score: [[score]]</h3>
+    <canvas id="canvas" width="500" height="500"></canvas>
+  </template>
+
+  <script>
+    class GameLevel extends Polymer.Element {
+      static get is() { return 'game-level'; }
+
+      static get properties() {
+        return {
+          snake: {
+            type: Object,
+            value: {
+              dx: 20,
+              dy: 0,
+              body: [
+                {x: 80, y: 20, direction: 'right'},
+                {x: 60, y: 20, direction: 'right'},
+                {x: 40, y: 20, direction: 'right'},
+                {x: 20, y: 20, direction: 'right'}
+              ],
+              isAlive: true
+            }
+          },
+          directionMovement : {
+            type: String,
+            value: 'right'
+          },
+          food: {
+            type: Object,
+            value: {
+              x: 0,
+              y: 0,
+              eaten: true
+            }
+          },
+          score: {
+            type: Number,
+            value: 0
+          }
+        };
+      }
+
+      connectedCallback() {
+        super.connectedCallback();
+        document.addEventListener('keydown', event => {
+          this.changeDirection(event);
+        });
+        this.__startGame();
+      }
+
+      __startGame(){
+        const canvas = this.shadowRoot.querySelector('#canvas');
+
+        if(canvas && canvas.getContext){
+          const ctx = canvas.getContext('2d');
+          this.__updateGame(ctx, canvas.width, canvas.height);
+        }
+      }
+
+      __reloadLevel(){
+        this.snake = {
+          dx: 20,
+          dy: 0,
+          body: [
+            {x: 80, y: 20, direction: 'right'},
+            {x: 60, y: 20, direction: 'right'},
+            {x: 40, y: 20, direction: 'right'},
+            {x: 20, y: 20, direction: 'right'}
+          ],
+          isAlive: true
+        };
+        this.directionMovement = 'right';
+        this.food = {
+          x: 0,
+          y: 0,
+          eaten: true
+        };
+        this.score = 0;
+      }
+
+      __updateGame(ctx, canvasWidth, canvasHeight){
+        const intervalId = setInterval(() => {
+          if(this.snake.isAlive){
+            this.__clearLevel(ctx, canvasWidth, canvasHeight)
+            this.__moveSnake(canvasWidth, canvasHeight);
+            this.__drawLevel(ctx, canvasWidth, canvasHeight);
+          }else{
+            this.__stopGame();
+          }
+        }, 300);
+      }
+
+      __drawLevel(ctx, canvasWidth, canvasHeight){
+        ctx.strokeRect(0, 0, canvasWidth, canvasWidth);
+        this.__drawSnake(ctx);
+        this.__drawFood(ctx, canvasWidth, canvasHeight);
+      }
+
+      __drawSnake(ctx) {
+        for(const part of this.snake.body) {
+          ctx.strokeRect(part.x, part.y, 20, 20);
+          ctx.fillStyle = 'rgb(0, 255, 0)';
+          ctx.fillRect(part.x, part.y, 20, 20);
+        }
+      }
+
+      __drawFood(ctx, canvasWidth, canvasHeight) {
+        if(this.food.eaten){
+          const coords = this.__getNewCoords(canvasWidth, canvasHeight);
+
+          this.food.x = coords[0];
+          this.food.y = coords[1];
+
+          this.food.eaten = false;
+        }
+
+        ctx.fillStyle = 'rgb(255, 0, 0)';
+        ctx.fillRect(this.food.x, this.food.y, 20, 20);
+      }
+
+      __clearLevel(ctx, canvasWidth, canvasHeight){
+        ctx.clearRect(0, 0, canvasWidth, canvasHeight);
+        ctx.strokeRect(0, 0, canvasWidth, canvasHeight);
+      }
+      __moveSnake(canvasWidth, canvasHeight){
+        const newHead = {
+          x: this.snake.body[0].x + this.snake.dx,
+          y: this.snake.body[0].y + this.snake.dy,
+          direction: this.directionMovement
+        };
+
+        this.snake.body.unshift(newHead);
+        this.snake.body.pop();
+
+        for(const part of this.snake.body){
+          if(this.directionMovement === 'right'){
+            if(part.x === canvasWidth){
+              part.x = 0;
+            }
+          }
+
+          if(this.directionMovement === 'left'){
+            if(part.x < 0){
+              part.x = canvasWidth - 20;
+            }
+          }
+
+          if(this.directionMovement === 'up'){
+            if(part.y < 0){
+              part.y = canvasHeight- 20;
+            }
+          }
+
+          if(this.directionMovement === 'down'){
+            if(part.y === canvasHeight){
+              part.y = 0;
+            }
+          }
+        }
+
+        if(newHead.x === this.food.x && newHead.y === this.food.y){
+          this.__eat();
+        }
+
+        this.__detectCollision();
+      }
+
+      __getNewCoords(canvasWidth, canvasHeight){
+        let index = 0;
+        let newX = 0;
+        let newY = 0;
+
+        while(index > -1 ){
+          newX = (Math.floor(Math.random() * ((canvasWidth - 10) / 20))) * 20;
+          newY = (Math.floor(Math.random() * ((canvasHeight - 10) / 20))) * 20;
+
+          index = this.snake.body.findIndex(part => part.x === newX && part.y === newY);
+        }
+
+        return [newX, newY];
+      }
+
+      __eat(){
+        this.food.eaten = true;
+        const newBodyPart = {x: 0, y: 0, direction: ''};
+        const previousDirection = this.snake.body[this.snake.body.length - 1].direction;
+
+        if(previousDirection === 'right'){
+          newBodyPart.x = this.snake.body[this.snake.body.length - 1].x - 20;
+          newBodyPart.y = this.snake.body[this.snake.body.length - 1].y;
+        }
+
+        if(previousDirection === 'left'){
+          newBodyPart.x = this.snake.body[this.snake.body.length - 1].x + 20;
+          newBodyPart.y = this.snake.body[this.snake.body.length - 1].y;
+        }
+
+        if(previousDirection === 'up'){
+          newBodyPart.x = this.snake.body[this.snake.body.length - 1].x;
+          newBodyPart.y = this.snake.body[this.snake.body.length - 1].y + 20;
+        }
+
+        if(previousDirection === 'down'){
+          newBodyPart.x = this.snake.body[this.snake.body.length - 1].x;
+          newBodyPart.y = this.snake.body[this.snake.body.length - 1].y - 20;
+        }
+
+        newBodyPart.direction = previousDirection;
+
+        this.snake.body = [...this.snake.body, newBodyPart];
+
+        this.score += 50;
+      }
+
+      changeDirection(event){
+        if(event.target.id === 'up' || event.which === 38){
+          if(this.directionMovement !== 'up' && this.directionMovement !== 'down'){
+            this.directionMovement = 'up';
+            this.snake.dx = 0;
+            this.snake.dy = -20;
+          }
+        }
+
+        if(event.target.id === 'down' || event.which === 40){
+          if(this.directionMovement !== 'up' && this.directionMovement !== 'down'){
+            this.directionMovement = 'down';
+            this.snake.dx = 0;
+            this.snake.dy = 20;
+          }
+        }
+
+        if(event.target.id === 'right' || event.which === 39){
+          if(this.directionMovement !== 'right' && this.directionMovement !== 'left'){
+            this.directionMovement = 'right';
+            this.snake.dx = 20;
+            this.snake.dy = 0;
+          }
+        }
+
+        if(event.target.id === 'left' || event.which === 37){
+          if(this.directionMovement !== 'right' && this.directionMovement !== 'left'){
+            this.directionMovement = 'left';
+            this.snake.dx = -20;
+            this.snake.dy = 0;
+          }
+        }
+      }
+
+      __detectCollision(){
+        for(let i = 1; i < this.snake.body.length; i++){
+          if(this.snake.body[0].x === this.snake.body[i].x &&
+                  this.snake.body[0].y === this.snake.body[i].y) {
+            this.snake.isAlive = false;
+          }
+        }
+      }
+
+      __stopGame(){
+        this.dispatchEvent(new CustomEvent('game-ended', {
+          detail: this.score
+        }));
+
+        this.__reloadLevel();
+      }
+    }
+
+    window.customElements.define(GameLevel.is, GameLevel);
+  </script>
+</dom-module>

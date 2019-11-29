@@ -1,0 +1,58 @@
+<link rel="import" href="../bower_components/polymer/polymer-element.html">
+<link rel="import" href="../bower_components/paper-card/paper-card.html">
+<link rel="import" href="../bower_components/paper-button/paper-button.html">
+
+<dom-module id="game-title">
+  <template>
+    <style include="shared-styles">
+      :host {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        padding: 10px;
+      }
+
+      paper-card {
+        width: 700px;
+        height: 300px;
+        margin: auto;
+        background: url('../images/snake/background.png');
+
+        --paper-card-header-image: {
+          width: 400px;
+          margin: auto;
+        };
+      }
+
+      .horizontal {
+        display: flex;
+        justify-content: center;
+      }
+
+      paper-button.info {
+        background-color: #3367d6;
+        color: white;
+        vertical-align: central;
+      }
+    </style>
+    <paper-card image="../images/snake/logo_snake.png">
+      <div class="card-actions">
+        <div class="horizontal">
+          <paper-button class="info" on-click="__startGame">Start game</paper-button>
+        </div>
+      </div>
+    </paper-card>
+  </template>
+
+  <script>
+    class GameTitle extends Polymer.Element {
+      static get is() { return 'game-title'; }
+
+      __startGame(){
+        this.dispatchEvent(new Event('game-started'));
+      }
+    }
+
+    window.customElements.define(GameTitle.is, GameTitle);
+  </script>
+</dom-module>
